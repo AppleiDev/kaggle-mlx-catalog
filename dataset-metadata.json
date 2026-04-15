@@ -1,0 +1,1 @@
+{"title": "Iai Dataset", "id": "dennisstewartjr/iai-dataset", "licenses": [{"name": "CC0-1.0"}], "subtitle": "Enriched LLM data from llm-price.com", "description": "Dataset containing current and future LLM information with pricing and specifications from llm-price.com", "keywords": ["llm", "pricing", "ai", "models"]}

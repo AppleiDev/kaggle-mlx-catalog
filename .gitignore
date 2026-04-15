@@ -1,0 +1,6 @@
+mlx-models-dataset/mlx_community_models.json
+mlx_community_models.json
+*.log
+.DS_Store
+__pycache__/
+*.pyc
