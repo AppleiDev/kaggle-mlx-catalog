@@ -16,10 +16,11 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
-DATASET_DIR = os.path.expanduser("~/Kaggle/mlx-models-dataset")
+SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+DATASET_DIR = os.path.join(SCRIPT_DIR, "mlx-models-dataset")
 OUTPUT_FILE = os.path.join(DATASET_DIR, "mlx_community_models.json")
-ROOT_COPY   = os.path.expanduser("~/Kaggle/mlx_community_models.json")
-LOG_FILE    = os.path.expanduser("~/Kaggle/mlx_catalog_update.log")
+ROOT_COPY   = os.path.join(SCRIPT_DIR, "mlx_community_models.json")
+LOG_FILE    = os.path.join(SCRIPT_DIR, "mlx_catalog_update.log")
 
 HF_API      = "https://huggingface.co/api/models"
 AUTHOR      = "mlx-community"
@@ -51,9 +52,6 @@ def fetch_all_models():
             log(f"Fetch error: {e}")
             sys.exit(1)
 
-        if not batch:
-            break
-        models.extend(batch)
         log(f"  Got {len(batch)} models (total so far: {len(models)})")
         if len(batch) < PAGE_SIZE:
             break
@@ -80,7 +78,6 @@ def push_to_kaggle():
 def main():
     log("=== MLX Catalog Update Started ===")
 
-    # Load existing to compare
     existing_count = 0
     if os.path.exists(OUTPUT_FILE):
         with open(OUTPUT_FILE) as f:
@@ -95,11 +92,11 @@ def main():
         log("No models returned — aborting to avoid overwriting good data")
         sys.exit(1)
 
+    os.makedirs(DATASET_DIR, exist_ok=True)
     with open(OUTPUT_FILE, "w") as f:
         json.dump(models, f, indent=2, default=str)
     log(f"Saved to {OUTPUT_FILE}")
 
-    # Keep root copy in sync
     with open(ROOT_COPY, "w") as f:
         json.dump(models, f, indent=2, default=str)
     log(f"Synced root copy {ROOT_COPY}")
