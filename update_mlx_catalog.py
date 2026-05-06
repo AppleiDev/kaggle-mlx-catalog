@@ -60,7 +60,6 @@ def fetch_all_models():
         if len(batch) < PAGE_SIZE:
             break
 
-        # Follow cursor from Link header instead of skip offset
         next_url = None
         for part in link_header.split(","):
             if 'rel="next"' in part:
@@ -79,16 +78,16 @@ def fetch_all_models():
 
 def push_to_kaggle():
     date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    # Try version first (existing dataset), fallback to create (first run)
     for cmd in [
         ["kaggle", "datasets", "version", "-p", DATASET_DIR, "-m", f"Auto-update {date_str}"],
         ["kaggle", "datasets", "create", "-p", DATASET_DIR],
     ]:
         result = subprocess.run(cmd, capture_output=True, text=True)
+        out = (result.stdout + result.stderr).strip()
         if result.returncode == 0:
-            log(f"Kaggle push succeeded ({cmd[2]}): {result.stdout.strip()}")
+            log(f"Kaggle push succeeded ({cmd[2]}): {out}")
             return
-        log(f"Kaggle {cmd[2]} failed: {result.stderr.strip()}")
+        log(f"Kaggle {cmd[2]} failed (rc={result.returncode}): {out}")
     sys.exit(1)
 
 
