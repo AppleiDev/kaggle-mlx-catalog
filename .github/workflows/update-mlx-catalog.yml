@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install kaggle CLI
-        run: pip install "kaggle<2"
+        run: pip install "kaggle==1.5.12"
 
       - name: Update & push catalog
         env:
