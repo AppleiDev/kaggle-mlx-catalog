@@ -37,14 +37,16 @@ def log(msg):
 
 def fetch_all_models():
     models = []
-    page = 0
+    page = 1
+    url = f"{HF_API}?author={AUTHOR}&limit={PAGE_SIZE}&full=true&sort=lastModified&direction=-1"
+
     while True:
-        url = f"{HF_API}?author={AUTHOR}&limit={PAGE_SIZE}&skip={page * PAGE_SIZE}&full=true&sort=lastModified&direction=-1"
-        log(f"Fetching page {page + 1} (skip={page * PAGE_SIZE})...")
+        log(f"Fetching page {page} ({len(models)} so far)...")
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "mlx-catalog-updater/1.0"})
             with urllib.request.urlopen(req, timeout=30) as r:
                 batch = json.loads(r.read())
+                link_header = r.headers.get("Link", "")
         except urllib.error.HTTPError as e:
             log(f"HTTP error {e.code}: {e.reason}")
             sys.exit(1)
@@ -52,27 +54,42 @@ def fetch_all_models():
             log(f"Fetch error: {e}")
             sys.exit(1)
 
-        log(f"  Got {len(batch)} models (total so far: {len(models)})")
+        models.extend(batch)
+        log(f"  Got {len(batch)} (total: {len(models)})")
+
         if len(batch) < PAGE_SIZE:
             break
+
+        # Follow cursor from Link header instead of skip offset
+        next_url = None
+        for part in link_header.split(","):
+            if 'rel="next"' in part:
+                next_url = part.split(";")[0].strip().strip("<>")
+                break
+
+        if not next_url:
+            break
+
+        url = next_url
         page += 1
-        time.sleep(0.5)  # be polite to HF API
+        time.sleep(0.5)
 
     return models
 
 
 def push_to_kaggle():
-    result = subprocess.run(
-        ["kaggle", "datasets", "version",
-         "-p", DATASET_DIR,
-         "-m", f"Auto-update {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"],
-        capture_output=True, text=True
-    )
-    if result.returncode == 0:
-        log(f"Kaggle push succeeded: {result.stdout.strip()}")
-    else:
-        log(f"Kaggle push failed: {result.stderr.strip()}")
-        sys.exit(1)
+    date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    # Try version first (existing dataset), fallback to create (first run)
+    for cmd in [
+        ["kaggle", "datasets", "version", "-p", DATASET_DIR, "-m", f"Auto-update {date_str}"],
+        ["kaggle", "datasets", "create", "-p", DATASET_DIR],
+    ]:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            log(f"Kaggle push succeeded ({cmd[2]}): {result.stdout.strip()}")
+            return
+        log(f"Kaggle {cmd[2]} failed: {result.stderr.strip()}")
+    sys.exit(1)
 
 
 def main():
